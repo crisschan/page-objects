@@ -1,7 +1,6 @@
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
-
 # Map PageElement constructor arguments to webdriver locator enums
 _LOCATOR_MAP = {'css': By.CSS_SELECTOR,
                 'id_': By.ID,
@@ -23,6 +22,7 @@ class PageObject(object):
         Root URI to base any calls to the ``PageObject.get`` method. If not defined
         in the constructor it will try and look it from the webdriver object.
     """
+
     def __init__(self, webdriver, root_uri=None):
         self.w = webdriver
         self.root_uri = root_uri if root_uri else getattr(self.w, 'root_uri', None)
@@ -70,6 +70,7 @@ class PageElement(object):
     Page Elements act as property descriptors for their Page Object, you can get
     and set them as normal attributes.
     """
+
     def __init__(self, context=False, **kwargs):
         if not kwargs:
             raise ValueError("Please specify a locator")
@@ -115,11 +116,58 @@ class MultiPageElement(PageElement):
                 elem2 = PageElement(id_='foo')
                 elem_with_context = PageElement(tag='tr', context=True)
     """
+
     def find(self, context):
         try:
             return context.find_elements(*self.locator)
         except NoSuchElementException:
             return []
+
+    def __set__(self, instance, value):
+        if self.has_context:
+            raise ValueError("Sorry, the set descriptor doesn't support elements with context.")
+        elems = self.__get__(instance, instance.__class__)
+        if not elems:
+            raise ValueError("Can't set value, no elements found")
+        [elem.send_keys(value) for elem in elems]
+
+
+class GroupPageElement(MultiPageElement):
+    '''
+    get a group elements.like combox and so on
+    return is a  dic{}
+    exp.
+    <select class="search_input" id="level" name="level">
+        <option value="">select</option>
+        <option value="5">6</option>
+        <option value="6">7</option>
+        <option value="7">8</option>
+        <option value="8">9</option>
+        <option value="9">10</option>
+    </select>
+
+    merviewlevel=GroupPageElement(xpath='//*[@id="level"]/option')
+
+
+    merviewlevel[u'6'].click()
+
+    PS:the selecter xpath is the best
+    '''
+
+    def find(self, context):
+        # print context
+        try:
+            # return context.find_elements(*self.locator)
+            dicGroup = {}
+            # print context.find_elements(*self.locator)
+            for aElement in context.find_elements(*self.locator):
+                dicGroup[aElement.text] = aElement
+                # print dicGroup
+            # print dicGroup
+            return dicGroup
+
+        except NoSuchElementException:
+            return {}
 
     def __set__(self, instance, value):
         if self.has_context:
